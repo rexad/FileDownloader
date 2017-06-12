@@ -5,3 +5,5 @@ C:\Users\geekzone\Documents\Visual Studio 2015\Projects\FileDownloader\AgodaFile
 C:\Users\geekzone\Documents\Visual Studio 2015\Projects\FileDownloader\AgodaFileDownloader.Service\bin\Debug\AgodaFileDownloader.Model.pdb
 C:\Users\geekzone\Documents\Visual Studio 2015\Projects\FileDownloader\AgodaFileDownloader.Service\obj\Debug\AgodaFileDownloader.Service.dll
 C:\Users\geekzone\Documents\Visual Studio 2015\Projects\FileDownloader\AgodaFileDownloader.Service\obj\Debug\AgodaFileDownloader.Service.pdb
+C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\AgodaFileDownloader.Service\bin\Debug\AgodaFileDownloader.Helper.dll
+C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\AgodaFileDownloader.Service\bin\Debug\AgodaFileDownloader.Helper.pdb

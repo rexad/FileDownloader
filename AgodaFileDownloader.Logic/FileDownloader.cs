@@ -31,7 +31,7 @@ namespace AgodaFileDownloader.Logic
         private string _localFile;
 
 
-        IProtocolDownloader _downloadProvider;
+        IProtocolDownloader _protocolDownloader;
         readonly ISegmentProcessor _segmentProcessor;
 
         private int _maxTries;
@@ -43,13 +43,13 @@ namespace AgodaFileDownloader.Logic
         {
             _segments = new List<Segment>();
             _segmentProcessor = segmentProcessor;
+            _segmentProcessor.ProtocolDownloader = protocolDownloader;
+            _protocolDownloader = protocolDownloader;
         }
 
         public Task StartAsynch(ResourceDetail detail)
         {
             _detail = detail;
-            _downloadProvider = detail.BindProtocolProviderInstance();
-
             var mainTask = Task.Run(() => StartDownload());
             return mainTask;
         }
@@ -77,7 +77,7 @@ namespace AgodaFileDownloader.Logic
                     try
                     {
                         numberOfTrial++;
-                        remoteFileDetail = _downloadProvider.GetFileInfo(_detail);
+                        remoteFileDetail = _protocolDownloader.GetFileInfo(_detail);
                         break;
                     }
                     catch (Exception ex)
@@ -115,37 +115,23 @@ namespace AgodaFileDownloader.Logic
 
                 //3-if the file accept ranges we will split it and download multiple segments at the same time
                 //there will be as muck threads as segments
-                CalculatedSegment[] calculatedSegments;
-                if (remoteFileDetail.AcceptRanges)
-                    calculatedSegments= new[] { new CalculatedSegment(0, remoteFileDetail.FileSize) };
+                if (!remoteFileDetail.AcceptRanges)
+                _segments.Add(new Segment()
+                {
+                    Index = 0,
+                    InitialStartPosition = 0,
+                    StartPosition = 0,
+                    EndPosition = remoteFileDetail.FileSize,
+                    CurrentURL = _localFile
+                });
                 else
                 {
                     var calculatedSegmentsResponse = _segmentProcessor.GetSegments(_numberOfSegments, remoteFileDetail);
                     if(calculatedSegmentsResponse.Denied || calculatedSegmentsResponse.ReturnedValue==null) return new ResponseBase() {Denied = true};
-                    calculatedSegments = calculatedSegmentsResponse.ReturnedValue;
+                    _segments.AddRange(calculatedSegmentsResponse.ReturnedValue); 
                 }
-
-
-                for (var i = 0; i < calculatedSegments.Length; i++)
-                {
-                    Segment segment = new Segment
-                    {
-                        Index = i,
-                        InitialStartPosition = calculatedSegments[i].StartPosition,
-                        StartPosition = calculatedSegments[i].StartPosition,
-                        EndPosition = calculatedSegments[i].EndPosition,
-                        CurrentURL = _localFile
-                    };
-                    lock (_segments)
-                    {
-                        _segments.Add(segment);
-                    }
-                }
-
-
-
+                
                 //5-Launch the downloads of segments
-               
                 using (FileStream fs = new FileStream(_localFile, FileMode.Open, FileAccess.Write))
                 {
                     lock (_segments)
@@ -153,9 +139,12 @@ namespace AgodaFileDownloader.Logic
                         foreach (var segment in _segments)
                         {
                             segment.OutputStream = fs;
+                            Serilog.Log.Information("Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " + segment.Index + " ---Started the segment download");
+                            segment.LastError = null;
                             lock (_tasks)
                             {
-                                _tasks.Add(Task.Run(() => SegmentDownload(segment)));
+                                var task=Task.Run(() => _segmentProcessor.ProcessSegment(_detail, segment));
+                                _tasks.Add(task);
                             }
                         }
                     }
@@ -176,7 +165,7 @@ namespace AgodaFileDownloader.Logic
                             }
                             
                         } while (_tasks.Count(e => e.Status == TaskStatus.Running) > 0 );
-                        
+                        Task.WaitAll(_tasks.ToArray());
                         if (state == DownloaderState.EndedWithError)
                         {
                             Serilog.Log.Fatal("Download Failed canceling all the tasks started: " + _localFile);
@@ -196,6 +185,11 @@ namespace AgodaFileDownloader.Logic
             {
                 //just in case 
 
+                if (File.Exists(_localFile))
+                {
+                    File.Delete(_localFile);
+                }
+
                 while (ex.InnerException != null) ex = ex.InnerException;
                 Serilog.Log.Fatal(ex, "---An exception was raised during download for " + _localFile);
 
@@ -208,82 +202,7 @@ namespace AgodaFileDownloader.Logic
             }
         }
 
-        /*
-        public void SegmentDownload(Segment segment)
-        {
-            Serilog.Log.Information("Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " +segment.Index + " ---Started the segment download");
-            segment.LastError = null;
-            try
-            {
-                if (segment.EndPosition > 0 && segment.StartPosition >= segment.EndPosition)
-                {
-                    segment.State = SegmentState.Finished;
-                    return;
-                }
-
-                int buffSize = 8192;
-                byte[] buffer = new byte[buffSize];
-
-                segment.State = SegmentState.Connecting;
-                var location = _detail;
-                var provider = location.BindProtocolProviderInstance();
-                segment.InputStream = provider.CreateStream(location, segment.StartPosition, segment.EndPosition);
-                segment.CurrentURL = _localFile;
-                
-                using (segment.InputStream)
-                {
-                    segment.State = SegmentState.Downloading;
-                    segment.CurrentTry = 0;
-                    long readSize;
-                    do
-                    {
-                        readSize = segment.InputStream.Read(buffer, 0, buffSize);
-
-                        if (segment.EndPosition > 0 &&
-                            segment.StartPosition + readSize > segment.EndPosition)
-                        {
-                            readSize = (segment.EndPosition - segment.StartPosition);
-                            if (readSize <= 0)
-                            {
-                                segment.StartPosition = segment.EndPosition;
-                                break;
-                            }
-                        }
-
-                        lock (segment.OutputStream)
-                        {
-                            segment.OutputStream.Position = segment.StartPosition;
-                            segment.OutputStream.Write(buffer, 0, (int) readSize);
-                        }
-
-                        segment.IncreaseStartPosition(readSize);
-
-                        if (segment.EndPosition > 0 && segment.StartPosition >= segment.EndPosition)
-                        {
-                            segment.StartPosition = segment.EndPosition;
-                            break;
-                        }
-                    } while (readSize > 0);
-                    
-                    segment.State = SegmentState.Finished;
-                    Serilog.Log.Information("Task #" + Task.CurrentId + " File : " + segment.CurrentURL +" Current segment " + segment.Index + " with Current Try: " +segment.CurrentTry + " finished successfully");
-                      
-                }
-
-            }
-            catch (Exception ex)
-            {
-                segment.State = SegmentState.Error;
-                segment.LastError = ex;
-                while (ex.InnerException != null) ex = ex.InnerException;
-                Serilog.Log.Error(ex,"Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " + segment.Index +"Current Try: " + segment.CurrentTry + " ---exception thrown");
-               
-            }
-            finally
-            {
-                segment.InputStream = null;
-            }
-        }*/
+       
         private bool RestartFailedSegments()
         {
             bool hasErrors = false;
@@ -301,8 +220,8 @@ namespace AgodaFileDownloader.Logic
                     {
                         segment.CurrentTry++;
                         Serilog.Log.Information("Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " + segment.Index + "Current Try: " + segment.CurrentTry + " ---segment started again");
-                        _tasks.Add(Task.Run(() => SegmentDownload(segment), tokenSource.Token));
-                        Task.WaitAll(_tasks.ToArray());
+                        _tasks.Add(Task.Run(() => _segmentProcessor.ProcessSegment(_detail, segment), tokenSource.Token));
+                        
                     }
                     else
                     {

@@ -10,7 +10,7 @@ namespace AgodaFileDownloader.Service
         #region Fields
 
         private string _url;
-        private Type _protocolType;
+        
         private IProtocolDownloader _provider;
         #endregion
 
@@ -64,22 +64,22 @@ namespace AgodaFileDownloader.Service
                 BindProtocolProviderType();
             }
         }
-
+        public Type ProtocolType { get; set; }
         public bool Authenticate { get; set; }
 
         public string Login { get; set; }
 
         public string Password { get; set; }
 
-        public string ProtocolType
+        public string Protocol
         {
             get
             {
-                if (_protocolType == null)
+                if (ProtocolType == null)
                 {
                     return null;
                 }
-                return _protocolType.AssemblyQualifiedName;
+                return ProtocolType.AssemblyQualifiedName;
             }
             set
             {
@@ -89,7 +89,7 @@ namespace AgodaFileDownloader.Service
                 }
                 else
                 {
-                    _protocolType = Type.GetType(value);
+                    ProtocolType = Type.GetType(value);
                 }
             }
         }
@@ -103,25 +103,25 @@ namespace AgodaFileDownloader.Service
 
             if (!string.IsNullOrEmpty(this.Url))
             {
-                _protocolType = ProtocolProviderFactory.GetProtocolType(this.Url);
+                ProtocolType = ProtocolProviderFactory.GetProtocolType(this.Url);
             }
         }
 
-
+        /*
         public IProtocolDownloader BindProtocolProviderInstance()
         {
-            if (_protocolType == null)
+            if (ProtocolType == null)
             {
                 BindProtocolProviderType();
             }
 
             if (_provider == null)
             {
-                _provider = ProtocolProviderFactory.CreateProvider(_protocolType);
+                _provider = ProtocolProviderFactory.CreateProvider(ProtocolType);
             }
 
             return _provider;
-        }
+        }*/
         #endregion
     }
 }

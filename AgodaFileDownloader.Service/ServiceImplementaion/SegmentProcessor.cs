@@ -65,14 +65,22 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
                         }
                     } while (readSize > 0);
 
-                    segment.State = SegmentState.Finished;
-                    response.Denied = false;
+                    if (segment.State == SegmentState.Downloading)
+                    {
+                        
+                        Serilog.Log.Information("Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " + segment.Index + "Current Try: " + segment.CurrentTry + " finished successfully");
+                        segment.State = SegmentState.Finished;
+                        response.Denied = false;
+
+                    }
+                    
                 }
 
             }
             catch (Exception ex)
             {
-                
+                Serilog.Log.Information("Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " + segment.Index + "Current Try: " + segment.CurrentTry + " finished successfully");
+
                 segment.State = SegmentState.Error;
                 segment.LastError = ex;
                 while (ex.InnerException != null) ex = ex.InnerException;
@@ -87,7 +95,7 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
         }
 
 
-        public ResponseBase<CalculatedSegment[]> GetSegments(int segmentCount, RemoteFileDetail remoteFileInfo)
+        public ResponseBase<List<Segment>> GetSegments(int segmentCount, RemoteFileDetail remoteFileInfo)
         {
             long minSize = 200000;
             long segmentSize = remoteFileInfo.FileSize / segmentCount;
@@ -100,27 +108,41 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
 
             long startPosition = 0;
 
-            List<CalculatedSegment> segments = new List<CalculatedSegment>();
+            List<CalculatedSegment> calculatedSegments = new List<CalculatedSegment>();
 
             for (int i = 0; i < segmentCount; i++)
             {
                 if (segmentCount - 1 == i)
                 {
-                    segments.Add(new CalculatedSegment(startPosition, remoteFileInfo.FileSize));
+                    calculatedSegments.Add(new CalculatedSegment(startPosition, remoteFileInfo.FileSize));
                 }
                 else
                 {
-                    segments.Add(new CalculatedSegment(startPosition, startPosition + (int)segmentSize));
+                    calculatedSegments.Add(new CalculatedSegment(startPosition, startPosition + (int)segmentSize));
                 }
 
-                startPosition = segments[segments.Count - 1].EndPosition;
+                startPosition = calculatedSegments[calculatedSegments.Count - 1].EndPosition;
             }
 
-            return new ResponseBase<CalculatedSegment[]>()
+            var segments = new List<Segment>();
+            for (var i = 0; i < calculatedSegments.Count; i++)
+            {
+                Segment segment = new Segment
+                {
+                    Index = i,
+                    InitialStartPosition = calculatedSegments[i].StartPosition,
+                    StartPosition = calculatedSegments[i].StartPosition,
+                    EndPosition = calculatedSegments[i].EndPosition,
+                    //CurrentURL = _localFile
+                };
+                segments.Add(segment);
+            }
+
+            return new ResponseBase<List<Segment>>()
             {
                 Denied = false,
-                ReturnedValue = segments.ToArray()
-        };
+                ReturnedValue = segments
+            };
         }
     }
 }

@@ -16,8 +16,8 @@ namespace AgodaFileDownloader.UTest
     [TestClass]
     public class UtIntegration
     {
-
-        [TestInitializeAttribute]
+        UnityContainer container = new UnityContainer();
+        [TestInitialize]
         public void InitialMethod()
         {
             Log.Logger = new LoggerConfiguration()
@@ -29,15 +29,13 @@ namespace AgodaFileDownloader.UTest
 
             ProtocolProviderFactory.RegisterProtocolHandler("http", typeof(HttpProtocolDownloader));
             ProtocolProviderFactory.RegisterProtocolHandler("ftp", typeof(FtpProtocolDownloader));
-
-            var container = new UnityContainer();
-            container.RegisterType<ISegmentCalculator, MinSizeSegmentCalculator>();
+            container.RegisterType<ISegmentProcessor,SegmentProcessor>();
         }
         [TestMethod]
         public void TestMethod1()
         {
-
-            var downloadManger=new DownloadManager(
+           var downloadManger= container.Resolve<DownloadManager>();
+            downloadManger.init(
                 new List<string>()
                 {
                     "ftp://173-25-49-226.client.mchsi.com/Public/NAHCA%20HD%20Backup/nahca/Backup%20from%20office%20FLASH/all%20seasons/revised/2x5Vandykbanner.pdf",
@@ -49,10 +47,10 @@ namespace AgodaFileDownloader.UTest
                      "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20044%20-%20%CE%A0%CE%B1%CE%B3%CF%89%CE%BC%CE%AD%CE%BD%CE%BF%20%CF%87%CF%81%CF%85%CF%83%CE%AC%CF%86%CE%B9.pdf",
                      "http://clicnet.swarthmore.edu/boudjedra.pdf",
                      "http://www.gideonphoto.com/blog/wp-content/uploads/2012/12/IMG_8940_2.jpg",
-                    "http://www.landisgyr.com/webfoo/wp-content/uploads/2014/11/LAN-14030_Ezine_Issue10_141103.pdf"
+                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20272%20-%20%CE%A3%CF%84%CE%B7%CE%BD%20%CE%9C%CE%AD%CF%83%CE%B7%20%CE%A4%CE%BF%CF%85%20%CE%A0%CE%BF%CF%85%CE%B8%CE%B5%CE%BD%CE%AC.pdf"
                 },
                 new List<AuthenticatedUrl>());
-           
+            downloadManger.Download();
         }
     }
 }

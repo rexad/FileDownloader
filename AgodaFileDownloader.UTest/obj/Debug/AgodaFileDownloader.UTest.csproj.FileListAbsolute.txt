@@ -31,3 +31,5 @@ C:\Users\geekzone\Documents\Visual Studio 2015\Projects\FileDownloader\AgodaFile
 C:\Users\geekzone\Documents\Visual Studio 2015\Projects\FileDownloader\AgodaFileDownloader.UTest\bin\Debug\Microsoft.Practices.Unity.xml
 C:\Users\geekzone\Documents\Visual Studio 2015\Projects\FileDownloader\AgodaFileDownloader.UTest\bin\Debug\Microsoft.Practices.Unity.Configuration.xml
 C:\Users\geekzone\Documents\Visual Studio 2015\Projects\FileDownloader\AgodaFileDownloader.UTest\bin\Debug\Microsoft.Practices.Unity.RegistrationByConvention.xml
+C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\AgodaFileDownloader.UTest\bin\Debug\AgodaFileDownloader.Helper.dll
+C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\AgodaFileDownloader.UTest\bin\Debug\AgodaFileDownloader.Helper.pdb
