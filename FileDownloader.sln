@@ -1,0 +1,52 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgodaFileDownloader.Logic", "AgodaFileDownloader.Logic\AgodaFileDownloader.Logic.csproj", "{8C22F86D-FC58-4142-9F10-C815D1C45645}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgodaFileDownloader.UTest", "AgodaFileDownloader.UTest\AgodaFileDownloader.UTest.csproj", "{BEE4E175-BFEB-4FA4-8CA8-9E34A85D18F0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgodaFileDownloader.Console", "AgodaFileDownloader.Console\AgodaFileDownloader.Console.csproj", "{11F99F68-4CE2-4A62-B529-21996584E6B9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgodaFileDownloader.Service", "AgodaFileDownloader.Service\AgodaFileDownloader.Service.csproj", "{563DFB5B-7664-4F92-9A64-C05EEEF8E54C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgodaFileDownloader.Model", "AgodaFileDownloader.Model\AgodaFileDownloader.Model.csproj", "{31029732-5703-41E2-B81C-C3644E6B1B97}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgodaFileDownloader.Helper", "AgodaFileDownloader.Helper\AgodaFileDownloader.Helper.csproj", "{5A03C054-6CDA-40BF-A45A-7DC3316E48BC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8C22F86D-FC58-4142-9F10-C815D1C45645}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C22F86D-FC58-4142-9F10-C815D1C45645}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C22F86D-FC58-4142-9F10-C815D1C45645}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C22F86D-FC58-4142-9F10-C815D1C45645}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BEE4E175-BFEB-4FA4-8CA8-9E34A85D18F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BEE4E175-BFEB-4FA4-8CA8-9E34A85D18F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BEE4E175-BFEB-4FA4-8CA8-9E34A85D18F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BEE4E175-BFEB-4FA4-8CA8-9E34A85D18F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11F99F68-4CE2-4A62-B529-21996584E6B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11F99F68-4CE2-4A62-B529-21996584E6B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11F99F68-4CE2-4A62-B529-21996584E6B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11F99F68-4CE2-4A62-B529-21996584E6B9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{563DFB5B-7664-4F92-9A64-C05EEEF8E54C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{563DFB5B-7664-4F92-9A64-C05EEEF8E54C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{563DFB5B-7664-4F92-9A64-C05EEEF8E54C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{563DFB5B-7664-4F92-9A64-C05EEEF8E54C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{31029732-5703-41E2-B81C-C3644E6B1B97}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{31029732-5703-41E2-B81C-C3644E6B1B97}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{31029732-5703-41E2-B81C-C3644E6B1B97}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{31029732-5703-41E2-B81C-C3644E6B1B97}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A03C054-6CDA-40BF-A45A-7DC3316E48BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A03C054-6CDA-40BF-A45A-7DC3316E48BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A03C054-6CDA-40BF-A45A-7DC3316E48BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A03C054-6CDA-40BF-A45A-7DC3316E48BC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,5 @@
+C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\FileDownloader.Logic\bin\Debug\FileDownloader.Logic.dll
+C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\FileDownloader.Logic\bin\Debug\FileDownloader.Logic.pdb
+C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\FileDownloader.Logic\obj\Debug\FileDownloader.Logic.csprojResolveAssemblyReference.cache
+C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\FileDownloader.Logic\obj\Debug\FileDownloader.Logic.dll
+C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\FileDownloader.Logic\obj\Debug\FileDownloader.Logic.pdb
