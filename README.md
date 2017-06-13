@@ -20,3 +20,5 @@ Some sources might fail in the middle of download :aretry system exist (tyhe num
 
 We don't want to have partial data in the final location in any case:if a segment fails to download it cancel all other segments and delete the file 
 
+to be continued
+
