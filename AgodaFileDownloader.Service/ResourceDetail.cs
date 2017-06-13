@@ -107,7 +107,7 @@ namespace AgodaFileDownloader.Service
             }
         }
 
-        /*
+        
         public IProtocolDownloader BindProtocolProviderInstance()
         {
             if (ProtocolType == null)
@@ -121,7 +121,7 @@ namespace AgodaFileDownloader.Service
             }
 
             return _provider;
-        }*/
+        }
         #endregion
     }
 }

@@ -43,7 +43,7 @@ namespace AgodaFileDownloader.Logic
         {
             _segments = new List<Segment>();
             _segmentProcessor = segmentProcessor;
-            _segmentProcessor.ProtocolDownloader = protocolDownloader;
+            
             _protocolDownloader = protocolDownloader;
         }
 
@@ -126,11 +126,11 @@ namespace AgodaFileDownloader.Logic
                 });
                 else
                 {
-                    var calculatedSegmentsResponse = _segmentProcessor.GetSegments(_numberOfSegments, remoteFileDetail);
+                    var calculatedSegmentsResponse = _segmentProcessor.GetSegments(_numberOfSegments, remoteFileDetail,_localFile);
                     if(calculatedSegmentsResponse.Denied || calculatedSegmentsResponse.ReturnedValue==null) return new ResponseBase() {Denied = true};
                     _segments.AddRange(calculatedSegmentsResponse.ReturnedValue); 
                 }
-                
+                //_segmentProcessor.ProtocolDownloader = _protocolDownloader;
                 //5-Launch the downloads of segments
                 using (FileStream fs = new FileStream(_localFile, FileMode.Open, FileAccess.Write))
                 {
@@ -143,7 +143,7 @@ namespace AgodaFileDownloader.Logic
                             segment.LastError = null;
                             lock (_tasks)
                             {
-                                var task=Task.Run(() => _segmentProcessor.ProcessSegment(_detail, segment));
+                                var task=Task.Run(() => _segmentProcessor.ProcessSegment(_detail, _protocolDownloader, segment));
                                 _tasks.Add(task);
                             }
                         }
@@ -220,7 +220,7 @@ namespace AgodaFileDownloader.Logic
                     {
                         segment.CurrentTry++;
                         Serilog.Log.Information("Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " + segment.Index + "Current Try: " + segment.CurrentTry + " ---segment started again");
-                        _tasks.Add(Task.Run(() => _segmentProcessor.ProcessSegment(_detail, segment), tokenSource.Token));
+                        _tasks.Add(Task.Run(() => _segmentProcessor.ProcessSegment(_detail, _protocolDownloader, segment), tokenSource.Token));
                         
                     }
                     else

@@ -9,10 +9,9 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
 {
     public class SegmentProcessor : ISegmentProcessor
     {
+        
 
-        public IProtocolDownloader ProtocolDownloader { get; set; }
-
-        public ResponseBase ProcessSegment( ResourceDetail rl,Segment segment)
+        public ResponseBase ProcessSegment( ResourceDetail rl, IProtocolDownloader protocolDownloader,Segment segment)
         {
             var response = new ResponseBase();
             segment.LastError = null;
@@ -28,7 +27,7 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
                 byte[] buffer = new byte[buffSize];
 
                 segment.State = SegmentState.Connecting;
-                segment.InputStream = ProtocolDownloader.CreateStream(rl, segment.StartPosition, segment.EndPosition);
+                segment.InputStream = protocolDownloader.CreateStream(rl, segment.StartPosition, segment.EndPosition);
                 
                 using (segment.InputStream)
                 {
@@ -79,7 +78,7 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
             }
             catch (Exception ex)
             {
-                Serilog.Log.Information("Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " + segment.Index + "Current Try: " + segment.CurrentTry + " finished successfully");
+                Serilog.Log.Error(ex,"Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " + segment.Index + "Current Try: " + segment.CurrentTry + " An exception was raised");
 
                 segment.State = SegmentState.Error;
                 segment.LastError = ex;
@@ -95,7 +94,7 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
         }
 
 
-        public ResponseBase<List<Segment>> GetSegments(int segmentCount, RemoteFileDetail remoteFileInfo)
+        public ResponseBase<List<Segment>> GetSegments(int segmentCount, RemoteFileDetail remoteFileInfo, string fileName)
         {
             long minSize = 200000;
             long segmentSize = remoteFileInfo.FileSize / segmentCount;
@@ -133,7 +132,7 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
                     InitialStartPosition = calculatedSegments[i].StartPosition,
                     StartPosition = calculatedSegments[i].StartPosition,
                     EndPosition = calculatedSegments[i].EndPosition,
-                    //CurrentURL = _localFile
+                    CurrentURL = fileName
                 };
                 segments.Add(segment);
             }

@@ -6,9 +6,8 @@ namespace AgodaFileDownloader.Service.ServiceInterface
 {
     public interface ISegmentProcessor
     {
-        ResponseBase ProcessSegment(ResourceDetail rl, Segment segment);
-        ResponseBase<List<Segment>> GetSegments(int segmentCount, RemoteFileDetail remoteFileInfo);
-
-        IProtocolDownloader ProtocolDownloader { get; set; }
+        ResponseBase ProcessSegment(ResourceDetail rl, IProtocolDownloader protocolDownloader,Segment segment);
+        ResponseBase<List<Segment>> GetSegments(int segmentCount, RemoteFileDetail remoteFileInfo, string fileName);
+        
     }
 }
