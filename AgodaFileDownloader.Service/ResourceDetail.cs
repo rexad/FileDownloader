@@ -66,62 +66,24 @@ namespace AgodaFileDownloader.Service
         }
         public Type ProtocolType { get; set; }
         public bool Authenticate { get; set; }
-
         public string Login { get; set; }
-
         public string Password { get; set; }
-
-        public string Protocol
-        {
-            get
-            {
-                if (ProtocolType == null)
-                {
-                    return null;
-                }
-                return ProtocolType.AssemblyQualifiedName;
-            }
-            set
-            {
-                if (value == null)
-                {
-                    BindProtocolProviderType();
-                }
-                else
-                {
-                    ProtocolType = Type.GetType(value);
-                }
-            }
-        }
+    
 
         #endregion
 
         #region Methods
 
-        public void BindProtocolProviderType()
+        private void BindProtocolProviderType()
         {
 
-            if (!string.IsNullOrEmpty(this.Url))
+            if (!string.IsNullOrEmpty(Url))
             {
-                ProtocolType = ProtocolProviderFactory.GetProtocolType(this.Url);
+                ProtocolType = ProtocolProviderFactory.GetProtocolType(Url);
             }
         }
 
         
-        public IProtocolDownloader BindProtocolProviderInstance()
-        {
-            if (ProtocolType == null)
-            {
-                BindProtocolProviderType();
-            }
-
-            if (_provider == null)
-            {
-                _provider = ProtocolProviderFactory.CreateProvider(ProtocolType);
-            }
-
-            return _provider;
-        }
         #endregion
     }
 }

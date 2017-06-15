@@ -3,8 +3,10 @@ using System.IO;
 using System.Net;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using AgodaFileDownloader.Helper;
 using AgodaFileDownloader.Model;
 using AgodaFileDownloader.Service.ServiceInterface;
+using static System.String;
 
 namespace AgodaFileDownloader.Service.ServiceImplementaion
 {
@@ -15,7 +17,8 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
             ServicePointManager.ServerCertificateValidationCallback = CertificateCallBack;
         }
 
-        static bool CertificateCallBack(object sender,X509Certificate certificate,X509Chain chain,SslPolicyErrors sslPolicyErrors)
+        static bool CertificateCallBack(object sender, X509Certificate certificate, X509Chain chain,
+            SslPolicyErrors sslPolicyErrors)
         {
             return true;
         }
@@ -25,7 +28,7 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
             if (rl.Authenticate)
             {
                 string login = rl.Login;
-                string domain = String.Empty;
+                string domain = Empty;
 
                 int slashIndex = login.IndexOf('\\');
 
@@ -44,52 +47,72 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
 
         #region IProtocolProvider Members
 
-        
 
 
-        public virtual Stream CreateStream(ResourceDetail rl, long initialPosition, long endPosition)
+
+        public ResponseBase<Stream> CreateStream(ResourceDetail rl, long initialPosition, long endPosition)
         {
-            HttpWebRequest request = (HttpWebRequest)GetRequest(rl);
-            request.Timeout = 100000;
-            FillCredentials(request, rl);
-
-            if (initialPosition != 0)
+            try
             {
-                if (endPosition == 0)
+                
+                HttpWebRequest request = (HttpWebRequest) GetRequest(rl);
+                request.Timeout = 100000;
+                FillCredentials(request, rl);
+
+                if (initialPosition != 0)
                 {
-                    request.AddRange((int)initialPosition);
+                    if (endPosition == 0)
+                    {
+                        request.AddRange((int) initialPosition);
+                    }
+                    else
+                    {
+                        request.AddRange((int) initialPosition, (int) endPosition);
+                    }
                 }
-                else
-                {
-                    request.AddRange((int)initialPosition, (int)endPosition);
-                }
+
+                var response = request.GetResponse();
+                var responseStream=response.GetResponseStream();
+                return new ResponseBase<Stream>() {Denied = false,ReturnedValue = responseStream };
             }
-
-            WebResponse response = request.GetResponse();
-
-            return response.GetResponseStream();
+            catch (Exception ex)
+            {
+                while (ex.InnerException != null) ex = ex.InnerException;
+                var responseFailed=new ResponseBase<Stream>() {Denied = true};
+                responseFailed.Messages.Add(ex.Message);
+                return responseFailed;
+            }
         }
 
-       
 
-        public virtual RemoteFileDetail GetFileInfo(ResourceDetail rl)
+
+        public ResponseBase<RemoteFileDetail> GetFileInfo(ResourceDetail rl)
         {
-            HttpWebRequest request = (HttpWebRequest)GetRequest(rl);
-            request.Timeout = 100000;
-            FillCredentials(request, rl);
-
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            RemoteFileDetail result = new RemoteFileDetail
+            try
             {
-                MimeType = response.ContentType,
-                LastModified = response.LastModified,
-                FileSize = response.ContentLength,
-                AcceptRanges =
-                    String.Compare(response.Headers["Accept-Ranges"], "bytes", StringComparison.OrdinalIgnoreCase) == 0
-            };
-            
+                HttpWebRequest request = (HttpWebRequest)GetRequest(rl);
+                request.Timeout = 100000;
+                FillCredentials(request, rl);
 
-            return result;
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                RemoteFileDetail result = new RemoteFileDetail
+                {
+                    MimeType = response.ContentType,
+                    LastModified = response.LastModified,
+                    FileSize = response.ContentLength,
+                    AcceptRanges =Compare(response.Headers["Accept-Ranges"], "bytes", StringComparison.OrdinalIgnoreCase) == 0
+                };
+            
+                return new ResponseBase<RemoteFileDetail>() {Denied = false,ReturnedValue = result };
+            }
+            catch (Exception ex)
+            {
+                while (ex.InnerException != null) ex = ex.InnerException;
+                Serilog.Log.Error(ex, "---Could not get remote file information trial number");
+                var responseFailed=new ResponseBase<RemoteFileDetail>() {Denied = true};
+                responseFailed.AddMessage(ex.Message);
+                return responseFailed;
+            }
         }
 
         #endregion

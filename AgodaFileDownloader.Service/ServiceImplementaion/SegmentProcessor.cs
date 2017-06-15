@@ -11,7 +11,7 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
     {
         
 
-        public ResponseBase ProcessSegment( ResourceDetail rl, IProtocolDownloader protocolDownloader,Segment segment)
+        public ResponseBase ProcessSegment(ResourceDetail rl, IProtocolDownloader protocolDownloader,Segment segment)
         {
             var response = new ResponseBase();
             segment.LastError = null;
@@ -27,19 +27,30 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
                 byte[] buffer = new byte[buffSize];
 
                 segment.State = SegmentState.Connecting;
-                segment.InputStream = protocolDownloader.CreateStream(rl, segment.StartPosition, segment.EndPosition);
+                var responseDownloadSegment= protocolDownloader.CreateStream(rl, segment.StartPosition, segment.EndPosition);
+                if (responseDownloadSegment.Denied || responseDownloadSegment.ReturnedValue==null)
+                {
+                    Serilog.Log.Error( "Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " + segment.Index + "Current Try: " + segment.CurrentTry + " An exception was raised");
+                    segment.State = SegmentState.Error;
+                    segment.LastError = string.Join(",",responseDownloadSegment.Messages);
+                    segment.CurrentTry++;
+                    var responseFail=new ResponseBase() {Denied = true};
+                    responseFail.AddListMessage(responseDownloadSegment.Messages);
+                    return responseFail;
+                }
+
+                segment.InputStream = responseDownloadSegment.ReturnedValue;
                 
                 using (segment.InputStream)
                 {
                     segment.State = SegmentState.Downloading;
-                    segment.CurrentTry = 0;
+                   
                     long readSize;
                     do
                     {
                         readSize = segment.InputStream.Read(buffer, 0, buffSize);
 
-                        if (segment.EndPosition > 0 &&
-                            segment.StartPosition + readSize > segment.EndPosition)
+                        if (segment.EndPosition > 0 && segment.StartPosition + readSize > segment.EndPosition)
                         {
                             readSize = (segment.EndPosition - segment.StartPosition);
                             if (readSize <= 0)
@@ -79,10 +90,10 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
             catch (Exception ex)
             {
                 Serilog.Log.Error(ex,"Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " + segment.Index + "Current Try: " + segment.CurrentTry + " An exception was raised");
-
-                segment.State = SegmentState.Error;
-                segment.LastError = ex;
+                segment.CurrentTry++;
                 while (ex.InnerException != null) ex = ex.InnerException;
+                segment.State = SegmentState.Error;
+                segment.LastError = ex.Message;
                 response.Denied = true;
                 response.Messages.Add(ex.Message); 
             }
@@ -106,19 +117,13 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
             }
 
             long startPosition = 0;
-
             List<CalculatedSegment> calculatedSegments = new List<CalculatedSegment>();
 
-            for (int i = 0; i < segmentCount; i++)
+            for (var i = 0; i < segmentCount; i++)
             {
-                if (segmentCount - 1 == i)
-                {
-                    calculatedSegments.Add(new CalculatedSegment(startPosition, remoteFileInfo.FileSize));
-                }
-                else
-                {
-                    calculatedSegments.Add(new CalculatedSegment(startPosition, startPosition + (int)segmentSize));
-                }
+                calculatedSegments.Add(segmentCount - 1 == i
+                    ? new CalculatedSegment(startPosition, remoteFileInfo.FileSize)
+                    : new CalculatedSegment(startPosition, startPosition + (int) segmentSize));
 
                 startPosition = calculatedSegments[calculatedSegments.Count - 1].EndPosition;
             }
@@ -132,7 +137,8 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
                     InitialStartPosition = calculatedSegments[i].StartPosition,
                     StartPosition = calculatedSegments[i].StartPosition,
                     EndPosition = calculatedSegments[i].EndPosition,
-                    CurrentURL = fileName
+                    CurrentURL = fileName,
+                    CurrentTry = 0
                 };
                 segments.Add(segment);
             }

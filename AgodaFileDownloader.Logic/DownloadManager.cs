@@ -24,30 +24,27 @@ namespace AgodaFileDownloader.Logic
         public void init(IList<string> urls, IList<AuthenticatedUrl> urlsWithAuthentification = null)
         {
             Log.Information("Starting the download process");
-
             if (urlsWithAuthentification == null) urlsWithAuthentification = new List<AuthenticatedUrl>();
-
-
-
-
             Log.Information("List of URLs passed down : " + string.Join(";", urls));
             Log.Information("List of URLs requiring authentication passed down : " + string.Join(";", urlsWithAuthentification));
 
-            //Extract data related to the resource we want to download (protocol/downloader impelemntation)
+           //Prepare the file to be downloaded extract the protocol Type
             _resourceDetails = ResourceDetail.FromListUrl(urls, urlsWithAuthentification).ToList();
             
         }
 
         public void Download()
         {
-            //EAch Url will be downloaded on it's own thread
+            //Each URL will be downloaded on it's own thread
             List<Task> tasks = new List<Task>();
             foreach (var resourceDetail in _resourceDetails)
             {
-                _protocolDownloader=ProtocolProviderFactory.CreateProvider(resourceDetail.ProtocolType);
+                //Resolve the Download provider
+                _protocolDownloader=ProtocolProviderFactory.ResolveProvider(resourceDetail.ProtocolType);
                 var fileDownloader = new FileDownloader(_segmentProcessor,_protocolDownloader);
                 tasks.Add(fileDownloader.StartAsynch(resourceDetail));
             }
+
             Task.WaitAll(tasks.ToArray());
         }
 

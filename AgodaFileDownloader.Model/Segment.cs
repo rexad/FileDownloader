@@ -6,7 +6,7 @@ namespace AgodaFileDownloader.Model
     public class Segment
     {
         private long startPosition;
-        private Exception lastError;
+        private string lastError;
         private SegmentState state;
         private bool started = false;
         private DateTime lastReception = DateTime.MinValue;
@@ -45,7 +45,7 @@ namespace AgodaFileDownloader.Model
 
         public DateTime LastErrorDateTime => lastErrorDateTime;
 
-        public Exception LastError
+        public string LastError
         {
             get
             {

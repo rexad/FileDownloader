@@ -1,5 +1,0 @@
-C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\AgodaFileDownloader.Helper\bin\Debug\AgodaFileDownloader.Helper.dll
-C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\AgodaFileDownloader.Helper\bin\Debug\AgodaFileDownloader.Helper.pdb
-C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\AgodaFileDownloader.Helper\obj\Debug\AgodaFileDownloader.Helper.csprojResolveAssemblyReference.cache
-C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\AgodaFileDownloader.Helper\obj\Debug\AgodaFileDownloader.Helper.dll
-C:\Users\geekzone\documents\visual studio 2015\Projects\FileDownloader\AgodaFileDownloader.Helper\obj\Debug\AgodaFileDownloader.Helper.pdb

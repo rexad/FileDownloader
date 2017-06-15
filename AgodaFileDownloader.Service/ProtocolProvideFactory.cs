@@ -12,7 +12,7 @@ namespace AgodaFileDownloader.Service
             ProtocolHandlers[prefix] = protocolProvider;
         }
 
-        public static IProtocolDownloader CreateProvider(Type providerType)
+        public static IProtocolDownloader ResolveProvider(Type providerType)
         {
             IProtocolDownloader provider = (IProtocolDownloader)Activator.CreateInstance(providerType);
             return provider;
