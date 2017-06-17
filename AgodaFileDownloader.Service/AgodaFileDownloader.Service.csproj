@@ -51,6 +51,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -65,8 +66,10 @@
     <Compile Include="ResourceDetail.cs" />
     <Compile Include="ServiceImplementaion\FtpProtocolDownloader.cs" />
     <Compile Include="ServiceImplementaion\HttpPtotocolDownloader.cs" />
+    <Compile Include="ServiceImplementaion\InitializeDownload.cs" />
     <Compile Include="ServiceImplementaion\SegmentProcessor.cs" />
     <Compile Include="ServiceInterface\BaseProtocolDownloader.cs" />
+    <Compile Include="ServiceInterface\IInitializeDonwload.cs" />
     <Compile Include="ServiceInterface\IProtocolDownloader.cs" />
     <Compile Include="ServiceInterface\ISegmentProcessor.cs" />
   </ItemGroup>

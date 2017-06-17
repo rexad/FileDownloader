@@ -52,6 +52,8 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
             }
             catch (Exception ex)
             {
+                Serilog.Log.Error(ex,"An exception was raised in Createstream.cs ");
+
                 while (ex.InnerException != null) ex = ex.InnerException;
                 var responseFailed = new ResponseBase<Stream>() { Denied = true };
                 responseFailed.Messages.Add(ex.Message);
@@ -71,7 +73,7 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
                 request = (FtpWebRequest)GetRequest(rl);
 
                 request.UsePassive = true;
-                request.Timeout = 500000;
+                //request.Timeout = 500000;
                 request.Method = WebRequestMethods.Ftp.GetFileSize;
                 FillCredentials(request, rl);
 

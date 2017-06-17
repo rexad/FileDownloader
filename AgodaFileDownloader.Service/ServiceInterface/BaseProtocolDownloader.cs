@@ -1,4 +1,6 @@
+using System.Configuration;
 using System.Net;
+using AgodaFileDownloader.Helper;
 
 namespace AgodaFileDownloader.Service.ServiceInterface
 {
@@ -7,7 +9,20 @@ namespace AgodaFileDownloader.Service.ServiceInterface
         protected WebRequest GetRequest(ResourceDetail location)
         {
             WebRequest request = WebRequest.Create(location.Url);
-            request.Timeout = 90000;
+
+            int timeout;
+            var conversion = int.TryParse(ConfigurationManager.AppSettings["Timeout"], out timeout);
+            if (!conversion)
+            {
+                Serilog.Log.Error("Could not Fetch timeout from config");
+                var response = new ResponseBase()
+                {
+                    Denied = true,
+
+                };
+                response.Messages.Add("Could not Fetch timeout from config");
+            }
+            request.Timeout = timeout;
             return request;
         }
 
