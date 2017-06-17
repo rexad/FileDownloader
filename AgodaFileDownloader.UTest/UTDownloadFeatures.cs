@@ -1,118 +1,254 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using AgodaFileDownloader.Logic;
 using AgodaFileDownloader.Model;
 using AgodaFileDownloader.Service;
 using AgodaFileDownloader.Service.ServiceImplementaion;
 using AgodaFileDownloader.Service.ServiceInterface;
+using AgodaFileDownloader.Helper;
 using Microsoft.Practices.Unity;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 using Serilog;
 using Serilog.Exceptions;
-using Serilog.Formatting.Json;
+using Moq;
 
 namespace AgodaFileDownloader.UTest
 {
-    [TestClass]
+    [TestFixture]
     public class UtDownloadFeature
     {
         UnityContainer container = new UnityContainer();
+        Mock<IInitializeDonwload> _mockinitializeDownload;
 
-        [TestInitialize]
+        Mock<IProtocolDownloader> _mockProtcolGetFileInfoRetries;
+
+        Mock<IProtocolDownloader> _mockProtcolDownloadSegmentRetries;
+        Mock<ISegmentProcessor> _mockSegementProcessorDownloadSegmentRetries;
+        private int _maxTries;
+        [SetUp]
         public void InitialMethod()
         {
+            _mockinitializeDownload = new Mock<IInitializeDonwload>();
+            _mockinitializeDownload.Setup(e => e.InitConfigData())
+                .Returns(() => new ResponseBase<ConfigurationSetting>()
+                {
+                    Denied = false,
+                    ReturnedValue =
+                    {
+                        NumberOfTrial = 10,
+                        LocalFilePath = "C:\\temp",
+                        MinSizeSegment = 200000,
+                        RetrialDelay = 10,
+                        NumberOfSegments = 5,
+                        Timeout = -1,
+                        LogFilePath = "C:\\temp\\log.txt"
+                    }
+                });
+            
+
             Log.Logger = new LoggerConfiguration()
-                .Enrich.WithExceptionDetails()
-                .MinimumLevel.Debug()
-                .WriteTo.LiterateConsole()
-                .WriteTo.RollingFile("C:\\temp\\log.txt")
-                .CreateLogger();
+                   .Enrich.WithExceptionDetails()
+                   .MinimumLevel.Debug()
+                   .WriteTo.LiterateConsole()
+                   .WriteTo.RollingFile("C:\\temp\\log.txt")
+                   .CreateLogger();
+
+
+            #region implementation to test getfile retry 
+            _mockProtcolGetFileInfoRetries = new Mock<IProtocolDownloader>();
+            _mockProtcolGetFileInfoRetries.Setup(e => e.GetFileInfo(It.IsAny<ResourceDetail>())).Returns(() => new ResponseBase<RemoteFileDetail>(){Denied = true});
+            #endregion
+
+
+            #region implementation to  test the download retry 
+            _mockProtcolDownloadSegmentRetries = new Mock<IProtocolDownloader>();
+            _mockProtcolDownloadSegmentRetries.Setup(e => e.GetFileInfo(It.IsAny<ResourceDetail>())).Returns(() => new ResponseBase<RemoteFileDetail>()
+               {
+                   Denied = false,
+                   ReturnedValue = new RemoteFileDetail()
+                   {
+                       AcceptRanges = true,
+                       FileSize = 0
+                   }
+               });
+
+            _mockProtcolDownloadSegmentRetries.Setup(e => e.CreateStream(It.IsAny<ResourceDetail>(), It.IsAny<long>(), It.IsAny<long>()))
+               .Returns(() => new ResponseBase<Stream>()
+                {
+                    Denied = true
+                });
+
+    
+            _mockSegementProcessorDownloadSegmentRetries =new Mock<ISegmentProcessor>();
+
+            _mockSegementProcessorDownloadSegmentRetries.Setup(
+                    e => e.GetSegments(It.IsAny<int>(), It.IsAny<long>(),It.IsAny<RemoteFileDetail>(), It.IsAny<string>()))
+                .Returns(() => new ResponseBase<List<Segment>>()
+                    {
+                        Denied = false,
+                        ReturnedValue = new List<Segment>() { new Segment()
+                        {
+                            State = SegmentState.Error,
+                            LastError = "error test",
+                            LastErrorDateTime = DateTime.Now,
+                            CurrentTry = 10
+                        } }
+                    }
+                );
+
+
+            _mockSegementProcessorDownloadSegmentRetries.Setup(
+                   e => e.ProcessSegment(It.IsAny<ResourceDetail>(),  It.IsAny<IProtocolDownloader>(),It.IsAny<Segment>()))
+               .Returns(() => new ResponseBase<List<Segment>>()
+               {
+                   Denied = false,
+                   ReturnedValue = new List<Segment>() { new Segment()
+                        {
+                            State = SegmentState.Error,
+                            LastError = "error test",
+                            LastErrorDateTime = DateTime.Now,
+                            CurrentTry = 10
+                        } }
+               }
+               );
+            #endregion
+
+            
+        }
+
+        [Test]
+        public void IsSupportingMultipleProtocols()
+        {
+            
+            ProtocolProviderFactory.RegisterProtocolHandler("http", typeof(HttpProtocolDownloader));
+            ProtocolProviderFactory.RegisterProtocolHandler("ftp", typeof(FtpProtocolDownloader));
+
+            container.RegisterType<ISegmentProcessor, SegmentProcessor>();
+            container.RegisterType<IInitializeDonwload, InitializeDownload>();
+
+
+            var downloadManger= container.Resolve<DownloadManager>();
+            downloadManger.Init(
+                new List<string>()
+                {
+                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20258%20-%20%CE%A4%CE%B1%CE%BE%CE%AF%CE%B4%CE%B9%20%CE%9C%CE%B5%20%CE%A4%CE%BF%CE%BD%20%CE%9A%CE%BF%CE%BB%CF%8C%CE%BC%CE%B2%CE%BF.pdf",
+                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20272%20-%20%CE%A3%CF%84%CE%B7%CE%BD%20%CE%9C%CE%AD%CF%83%CE%B7%20%CE%A4%CE%BF%CF%85%20%CE%A0%CE%BF%CF%85%CE%B8%CE%B5%CE%BD%CE%AC.pdf",
+                    "http://clicnet.swarthmore.edu/boudjedra.pdf",
+                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20044%20-%20%CE%A0%CE%B1%CE%B3%CF%89%CE%BC%CE%AD%CE%BD%CE%BF%20%CF%87%CF%81%CF%85%CF%83%CE%AC%CF%86%CE%B9.pdf",
+                    "http://www.gideonphoto.com/blog/wp-content/uploads/2012/12/IMG_8940_2.jpg",
+                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20252%20-%20%CE%97%20%CE%A7%CE%B1%CE%BC%CE%AD%CE%BD%CE%B7%20%CE%9C%CE%BF%CF%8D%CE%BC%CE%B9%CE%B1.pdf",
+
+                     },
+                new List<AuthenticatedUrl>());
+            var tasks=downloadManger.Download();
+            Task.WaitAll(tasks.ToArray());
+            //todo test for allthe file exiestence
+        }
+        
+        [Test]
+        public void IsSupportingMultiThreadingForMultipleFiles()
+        {
 
             ProtocolProviderFactory.RegisterProtocolHandler("http", typeof(HttpProtocolDownloader));
             ProtocolProviderFactory.RegisterProtocolHandler("ftp", typeof(FtpProtocolDownloader));
-            container.RegisterType<ISegmentProcessor,SegmentProcessor>();
-        }
-        [TestMethod]
-        public void IsSupportingMultipleProtocols()
-        {
-           var downloadManger= container.Resolve<DownloadManager>();
-            downloadManger.init(
-                new List<string>()
-                {
-                   "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20252%20-%20%CE%97%20%CE%A7%CE%B1%CE%BC%CE%AD%CE%BD%CE%B7%20%CE%9C%CE%BF%CF%8D%CE%BC%CE%B9%CE%B1.pdf",
-                     "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20258%20-%20%CE%A4%CE%B1%CE%BE%CE%AF%CE%B4%CE%B9%20%CE%9C%CE%B5%20%CE%A4%CE%BF%CE%BD%20%CE%9A%CE%BF%CE%BB%CF%8C%CE%BC%CE%B2%CE%BF.pdf",
-                     "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20272%20-%20%CE%A3%CF%84%CE%B7%CE%BD%20%CE%9C%CE%AD%CF%83%CE%B7%20%CE%A4%CE%BF%CF%85%20%CE%A0%CE%BF%CF%85%CE%B8%CE%B5%CE%BD%CE%AC.pdf",
-                      "http://clicnet.swarthmore.edu/boudjedra.pdf",
-                     "http://www.gideonphoto.com/blog/wp-content/uploads/2012/12/IMG_8940_2.jpg",
-                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20044%20-%20%CE%A0%CE%B1%CE%B3%CF%89%CE%BC%CE%AD%CE%BD%CE%BF%20%CF%87%CF%81%CF%85%CF%83%CE%AC%CF%86%CE%B9.pdf",
-                    
-                     },
-                new List<AuthenticatedUrl>());
-            downloadManger.Download();
-        }
-        
-        [TestMethod]
-        public void IsSupportingMultiThreadingForMultipleFiles()
-        {
+
+            container.RegisterType<ISegmentProcessor, SegmentProcessor>();
+            container.RegisterType<IInitializeDonwload, InitializeDownload>();
+
+
             var downloadManger = container.Resolve<DownloadManager>();
-            downloadManger.init(
+            downloadManger.Init(
                 new List<string>()
                 {
-                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20258%20-%20%CE%A4%CE%B1%CE%BE%CE%AF%CE%B4%CE%B9%20%CE%9C%CE%B5%20%CE%A4%CE%BF%CE%BD%20%CE%9A%CE%BF%CE%BB%CF%8C%CE%BC%CE%B2%CE%BF.pdf",
-                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20272%20-%20%CE%A3%CF%84%CE%B7%CE%BD%20%CE%9C%CE%AD%CF%83%CE%B7%20%CE%A4%CE%BF%CF%85%20%CE%A0%CE%BF%CF%85%CE%B8%CE%B5%CE%BD%CE%AC.pdf",
-                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20044%20-%20%CE%A0%CE%B1%CE%B3%CF%89%CE%BC%CE%AD%CE%BD%CE%BF%20%CF%87%CF%81%CF%85%CF%83%CE%AC%CF%86%CE%B9.pdf",
+                    "ftp://test.com/test",
+                    "http://test.com/test",
+                    "http://test.com/test"
                 },
                 new List<AuthenticatedUrl>());
-            downloadManger.Download();
+            var tasks=downloadManger.Download();
+            Assert.AreEqual(tasks.Count,3);
+            Assert.IsTrue(tasks.TrueForAll(e=>e.Status==TaskStatus.Running));
         }
         
-        [TestMethod]
-        public void IsSupportingMultiThreadingForMultipleSegments()
-        {
-            var downloadManger = container.Resolve<DownloadManager>();
-            downloadManger.init(
-                new List<string>()
-                {
-                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20258%20-%20%CE%A4%CE%B1%CE%BE%CE%AF%CE%B4%CE%B9%20%CE%9C%CE%B5%20%CE%A4%CE%BF%CE%BD%20%CE%9A%CE%BF%CE%BB%CF%8C%CE%BC%CE%B2%CE%BF.pdf",
-                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20272%20-%20%CE%A3%CF%84%CE%B7%CE%BD%20%CE%9C%CE%AD%CF%83%CE%B7%20%CE%A4%CE%BF%CF%85%20%CE%A0%CE%BF%CF%85%CE%B8%CE%B5%CE%BD%CE%AC.pdf",
-                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20044%20-%20%CE%A0%CE%B1%CE%B3%CF%89%CE%BC%CE%AD%CE%BD%CE%BF%20%CF%87%CF%81%CF%85%CF%83%CE%AC%CF%86%CE%B9.pdf",
-                },
-                new List<AuthenticatedUrl>());
-            downloadManger.Download();
-        }
+      
         
-        [TestMethod]
+        [Test]
         public void IsDeletingIfIncomplete()
         {
-            var downloadManger = container.Resolve<DownloadManager>();
-            downloadManger.init(
-                new List<string>()
-                {
-                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20044%20-%20%CE%A0%CE%B1%CE%B3%CF%89%CE%BC%CE%AD%CE%BD%CE%BF%20%CF%87%CF%81%CF%85%CF%83%CE%AC%CF%86%CE%B9.pdf",
-                },
-                new List<AuthenticatedUrl>());
-            downloadManger.Download();
+            var configSetting = new ConfigurationSetting()
+            {
+                NumberOfTrial = 10,
+                LocalFilePath = "C:\\temp",
+                MinSizeSegment = 200000,
+                RetrialDelay = 10,
+                NumberOfSegments = 5,
+                Timeout = -1,
+                LogFilePath = "C:\\temp\\log.txt"
+            };
+            var rd = new ResourceDetail() { Url = "http://testutl.example/file.txt" };
+            FileDownloader fileDownloader = new FileDownloader(_mockSegementProcessorDownloadSegmentRetries.Object, _mockProtcolDownloadSegmentRetries.Object, new InitializeDownload());
+            ResponseBase response = fileDownloader.StartDownload(rd, configSetting);
+            Assert.IsTrue(response.Denied);
+            _mockSegementProcessorDownloadSegmentRetries.Verify(m => m.DeleteFile(It.IsAny<string>()));
+
         }
-        
-        [TestMethod]
+
+        [Test]
         public void IsFailingIfGetInfoFails()
         {
-            /* "ftp://173-25-49-226.client.mchsi.com/Public/NAHCA%20HD%20Backup/nahca/Backup%20from%20office%20FLASH/all%20seasons/revised/2x5Vandykbanner.pdf",
-                "ftp://83.247.138.9/CT1068879/MB10027%20-%20Projecte%20constructiu%20%20barreres%20ac%FAstiques%20carretera%20C-17.%20Tram%20Montcada%20i%20Reixac.pdf",
-                "ftp://cda.cfa.harvard.edu/pub/.snapshot/weekly.2017-05-21_0015/science/ao16/cat7/18745/secondary/acisf18745_000N001_evt1.fits.gz",
-            */
-        }
-        
-        [TestMethod]
-        public void IsSegmentFailsAfterMaxRetries()
-        {
+            var configSetting = new ConfigurationSetting()
+            {
+                NumberOfTrial = 10,
+                LocalFilePath = "C:\\temp",
+                MinSizeSegment = 200000,
+                RetrialDelay = 10,
+                NumberOfSegments = 5,
+                Timeout = -1,
+                LogFilePath = "C:\\temp\\log.txt"
+            };
+            var rd = new ResourceDetail() { Url = "http://testutl.example/file.txt" };
+            FileDownloader fileDownloader = new FileDownloader(_mockSegementProcessorDownloadSegmentRetries.Object, _mockProtcolDownloadSegmentRetries.Object, new InitializeDownload());
+            ResponseBase response = fileDownloader.StartDownload(rd, configSetting);
+            Assert.IsTrue(response.Denied);
+            _mockSegementProcessorDownloadSegmentRetries.Verify(m => m.DeleteFile(It.IsAny<string>()));
 
         }
 
-        [TestMethod]
-        public void IsSegmentSupportRetries()
-        {
 
+
+        [Test]
+        public void IsDownloadFailsAfterMaxRetries()
+        {
+            var configSetting = new ConfigurationSetting()
+            {
+                NumberOfTrial = 10,
+                LocalFilePath = "C:\\temp",
+                MinSizeSegment = 200000,
+                RetrialDelay = 10,
+                NumberOfSegments = 5,
+                Timeout = -1,
+                LogFilePath = "C:\\temp\\log.txt"
+            };
+            var rd=new ResourceDetail() {Url = "http://testutl.example/file.txt"};
+            FileDownloader fileDownloader = new FileDownloader(_mockSegementProcessorDownloadSegmentRetries.Object, _mockProtcolDownloadSegmentRetries.Object, new InitializeDownload());
+            ResponseBase response = fileDownloader.StartDownload(rd, configSetting);
+            Assert.IsTrue(response.Denied);
+            _mockSegementProcessorDownloadSegmentRetries.Verify(m=>m.ProcessSegment(It.IsAny<ResourceDetail>(), It.IsAny<IProtocolDownloader>(), It.IsAny<Segment>()));
+        }
+
+        [Test]
+        public void IsGetFileInfoSupportRetries()
+        {
+            _mockinitializeDownload.Setup(e => e.AllocateSpace(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(() => new ResponseBase<string>() {Denied = false});
+            FileDownloader fileDownloader = new FileDownloader(new SegmentProcessor (), _mockProtcolGetFileInfoRetries.Object, _mockinitializeDownload.Object);
+            ResponseBase response=fileDownloader.StartDownload(new ResourceDetail(), new ConfigurationSetting());
+            Assert.IsTrue(response.Denied);
+            _mockProtcolGetFileInfoRetries.Verify(m=>m.GetFileInfo(new ResourceDetail()), Times.Exactly(_maxTries));
         }
 
     }

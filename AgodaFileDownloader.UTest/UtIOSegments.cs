@@ -1,35 +1,37 @@
 ﻿using System.IO;
-using System.IO.Pipes;
 using System.Text;
 using AgodaFileDownloader.Model;
 using AgodaFileDownloader.Service;
 using AgodaFileDownloader.Service.ServiceInterface;
 using AgodaFileDownloader.Helper;
 using AgodaFileDownloader.Service.ServiceImplementaion;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using NUnit.Framework;
+using Assert = NUnit.Framework.Assert;
 
 namespace AgodaFileDownloader.UTest
 {
-    [TestClass]
+    [TestFixture]
     public class UtIOSegments
     {
+        Mock<IInitializeDonwload> _mockintializeDownload;
         Mock<IProtocolDownloader> _protocolDownloadSuccessMock = new Mock<IProtocolDownloader>();
         Mock<IProtocolDownloader> _protocolFailureMock = new Mock<IProtocolDownloader>();
+
         private MemoryStream _testInStream=new MemoryStream();
         private long _testStreamLength;
         Segment _segment = new Segment();
         Segment _segmentCheckPosition = new Segment();
         ResourceDetail resourceDetail = new ResourceDetail();
         RemoteFileDetail remoteFileInfo=new RemoteFileDetail();
-        [TestInitialize]
+        [SetUp]
         public void Initialize()
         {
             MockDataCreation();
             
         }
 
-        [TestMethod]
+        [Test]
         public void IsSegmentWritten()
         {
             var processor = new SegmentProcessor();
@@ -49,7 +51,7 @@ namespace AgodaFileDownloader.UTest
         }
 
 
-        [TestMethod]
+        [Test]
         public void IsSegmentStreamCreationSupportFail()
         {
             var processor = new SegmentProcessor();
@@ -60,18 +62,19 @@ namespace AgodaFileDownloader.UTest
 
         }
         
-        [TestMethod]
+        [Test]
         public void IsSegmentStreamWritingSupportFail()
         {
             var processor = new SegmentProcessor();
             _segment.OutputStream = null;
+            _segment=new Segment();
             ResponseBase result = processor.ProcessSegment(resourceDetail, _protocolDownloadSuccessMock.Object, _segment);
             Assert.IsTrue(result.Denied);
             Assert.AreEqual(_segment.CurrentTry,1);
             Assert.AreEqual(_segment.StartPosition, 0);
         }
 
-        [TestMethod]
+        [Test]
         public void IsStartedPositionMoved()
         {
             var processor = new SegmentProcessor();
@@ -84,13 +87,13 @@ namespace AgodaFileDownloader.UTest
 
         }
 
-        [TestMethod]
+        [Test]
         public void IsFileSplitToSegments()
         {
             var processor = new SegmentProcessor();
             int numberOfSegments = 10;
             remoteFileInfo.FileSize = 2500000;
-            var listSegmentResponse = processor.GetSegments(numberOfSegments, remoteFileInfo, "FileName");
+            var listSegmentResponse = processor.GetSegments(numberOfSegments, 200000, remoteFileInfo, "FileName");
             Assert.IsFalse(listSegmentResponse.Denied);
             Assert.IsNotNull(listSegmentResponse.ReturnedValue);
             var listSegment = listSegmentResponse.ReturnedValue;
@@ -106,13 +109,13 @@ namespace AgodaFileDownloader.UTest
             }
         }
 
-        [TestMethod]
+        [Test]
         public void IsFileSplitSingleIfInferiorToMiSize()
         {
             var processor = new SegmentProcessor();
             int numberOfSegments = 10;
             remoteFileInfo.FileSize = 170000;
-            var listSegmentResponse = processor.GetSegments(numberOfSegments, remoteFileInfo, "FileName");
+            var listSegmentResponse = processor.GetSegments(numberOfSegments, 200000, remoteFileInfo, "FileName");
             Assert.IsFalse(listSegmentResponse.Denied);
             Assert.IsNotNull(listSegmentResponse.ReturnedValue);
             var listSegment = listSegmentResponse.ReturnedValue;
@@ -125,13 +128,13 @@ namespace AgodaFileDownloader.UTest
            
         }
         
-        [TestMethod]
+        [Test]
         public void IsFileSplitInferiorToMiSize()
         {
             var processor = new SegmentProcessor();
             int numberOfSegments = 10;
             remoteFileInfo.FileSize = 230000;
-            var listSegmentResponse = processor.GetSegments(numberOfSegments, remoteFileInfo, "FileName");
+            var listSegmentResponse = processor.GetSegments(numberOfSegments, 200000, remoteFileInfo, "FileName");
             Assert.IsFalse(listSegmentResponse.Denied);
             Assert.IsNotNull(listSegmentResponse.ReturnedValue);
             var listSegment = listSegmentResponse.ReturnedValue;
@@ -144,7 +147,7 @@ namespace AgodaFileDownloader.UTest
 
         }
         
-        [TestMethod]
+        [Test]
         public void IsSegmentSupportErrors()
         {
             
@@ -152,6 +155,26 @@ namespace AgodaFileDownloader.UTest
         
         void MockDataCreation()
         {
+
+
+            _mockintializeDownload = new Mock<IInitializeDonwload>();
+            _mockintializeDownload.Setup(e => e.InitConfigData())
+                .Returns(() => new ResponseBase<ConfigurationSetting>()
+                {
+                    Denied = false,
+                    ReturnedValue =
+                    {
+                        NumberOfTrial = 10,
+                        LocalFilePath = "C:\\temp",
+                        MinSizeSegment = 200000,
+                        RetrialDelay = 10,
+                        NumberOfSegments = 5,
+                        Timeout = -1,
+                        LogFilePath = "C:\\temp\\log.txt"
+                    }
+                });
+
+
             #region initSuccessProtocolDownloader
             _testInStream = new MemoryStream(Encoding.UTF8.GetBytes("a test string for the stream"));
             MemoryStream testOutStream = new MemoryStream();
