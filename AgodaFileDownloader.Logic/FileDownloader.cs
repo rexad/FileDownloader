@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AgodaFileDownloader.Helper;
+using AgodaFileDownloader.Logic.Helper;
 using AgodaFileDownloader.Model;
 using AgodaFileDownloader.Service;
 using AgodaFileDownloader.Service.ServiceInterface;
@@ -15,52 +16,53 @@ namespace AgodaFileDownloader.Logic
 {
     public class FileDownloader
     {
-        
+
 
         readonly List<Segment> _segments;
         readonly List<Task> _tasks;
-        readonly IProtocolDownloader _protocolDownloader;
-        readonly ISegmentProcessor _segmentProcessor;
         DownloaderState state { get; set; }
         ResourceDetail _detail;
-        string _localFile;
-        long _fileSize;
-        int _maxTries;
-        int _retryDelay;
-        string _path;
-        int _numberOfSegments;
 
-        public FileDownloader( ISegmentProcessor segmentProcessor,IProtocolDownloader protocolDownloader)
+
+        #region Injected Properties
+        private ConfigurationSetting _configurationSetting;
+        readonly IProtocolDownloader _protocolDownloader;
+        readonly ISegmentProcessor _segmentProcessor;
+        private IInitializeDonwload _initializeDonwload;
+
+
+        #endregion
+
+
+        private string _localFile;
+        private long _fileSize;
+       
+
+        public FileDownloader( ISegmentProcessor segmentProcessor,IProtocolDownloader protocolDownloader, IInitializeDonwload initializeDonwload)
         {
             _segments = new List<Segment>();
             _tasks = new List<Task>();
             _segmentProcessor = segmentProcessor;
             _protocolDownloader = protocolDownloader;
+            _initializeDonwload = initializeDonwload;
         }
 
-        public Task StartAsynch(ResourceDetail detail)
+        public Task StartAsynch(ResourceDetail detail,ConfigurationSetting configurationSetting)
         {
-            _detail = detail;
-            var mainTask = Task.Run(() => StartDownload());
+            var mainTask = Task.Run(() => StartDownload(detail, configurationSetting));
             return mainTask;
         }
 
 
-        public ResponseBase StartDownload()
+        public ResponseBase StartDownload(ResourceDetail detail,ConfigurationSetting configurationSetting)
         {
             try
             {
+                _detail = detail;
                 //0- Get configuration Data
-                var responseInit = InitConfigData();
-                if (responseInit.Denied)
-                {
-                    SetState(DownloaderState.EndedWithError);
-                    Serilog.Log.Fatal( "Task #" + Task.CurrentId + "---Download Failed not able to get configuration data for resource: " + _detail.Url);
-
-                    return responseInit;
-                }
-
-                
+                _configurationSetting = configurationSetting;
+                SetState(DownloaderState.Preparing);
+               
                 //1- Try and get Information on the remote file
                 var numberOfTrial = 0;
                 RemoteFileDetail remoteFileDetail;
@@ -71,9 +73,9 @@ namespace AgodaFileDownloader.Logic
                     if (responseProtocolDownloader.Denied)
                     {
                         SetState(DownloaderState.WaitingForReconnect);
-                        Serilog.Log.Information("Task #" + Task.CurrentId + "---Goes to sleep for " + _retryDelay +" seconds");
-                        Thread.Sleep(TimeSpan.FromSeconds(_retryDelay));
-                        if ( numberOfTrial >= _maxTries) return new ResponseBase() { Denied = true };
+                        Serilog.Log.Information("Task #" + Task.CurrentId + "---Goes to sleep for " + _configurationSetting.RetrialDelay + " seconds");
+                        Thread.Sleep(TimeSpan.FromSeconds(_configurationSetting.RetrialDelay));
+                        if ( numberOfTrial >= _configurationSetting.NumberOfTrial) return new ResponseBase() { Denied = true };
                     }
                     else
                     {
@@ -84,12 +86,13 @@ namespace AgodaFileDownloader.Logic
                 }
 
                 //2-Create the file receiving the data and extract name from the URL
-                var responseAccolacte=AllocLocalFile();
+                var responseAccolacte= _initializeDonwload.AllocateSpace(_detail.Url, _configurationSetting.LocalFilePath);
                 if (responseAccolacte.Denied)
                 {
                     return responseAccolacte;
                 }
-                
+                _localFile = responseAccolacte.ReturnedValue;
+
                 //3-if the file accept ranges we will split it and download multiple segments at the same time
                 //there will be as muck threads as segments
                 if (!remoteFileDetail.AcceptRanges)
@@ -103,7 +106,7 @@ namespace AgodaFileDownloader.Logic
                 });
                 else
                 {
-                    var calculatedSegmentsResponse = _segmentProcessor.GetSegments(_numberOfSegments, remoteFileDetail,_localFile);
+                    var calculatedSegmentsResponse = _segmentProcessor.GetSegments(_configurationSetting.NumberOfSegments, _configurationSetting.MinSizeSegment, remoteFileDetail,_localFile);
                     if(calculatedSegmentsResponse.Denied || calculatedSegmentsResponse.ReturnedValue==null) return new ResponseBase() {Denied = true};
                     _segments.AddRange(calculatedSegmentsResponse.ReturnedValue); 
                 }
@@ -148,7 +151,7 @@ namespace AgodaFileDownloader.Logic
                             //if a single segments can't be downloaded and reaches maximum tries delete the file
                             Serilog.Log.Fatal("Download Failed canceling all the tasks started: " + _localFile);
                             fs.Close();
-                            if (File.Exists(_localFile)) File.Delete(_localFile);
+                            _segmentProcessor.DeleteFile(_localFile);
                             return new ResponseBase() { Denied = true };
                         }
 
@@ -161,11 +164,10 @@ namespace AgodaFileDownloader.Logic
             }
             catch (Exception ex)
             {
-                //just in case an unsupported exception is raised for a particular file we make sure to delte the file
-                if (File.Exists(_localFile))
-                    File.Delete(_localFile);
-                
+                //just in case an unsupported exception is raised for a particular file we make sure to delete the file
+                _segmentProcessor.DeleteFile(_localFile);
 
+                
                 while (ex.InnerException != null) ex = ex.InnerException;
                 Serilog.Log.Fatal(ex, "---An exception was raised during download for " + _localFile);
 
@@ -185,23 +187,25 @@ namespace AgodaFileDownloader.Logic
             bool hasErrors = false;
             double delay = 0;
             var tokenSource = new CancellationTokenSource();
-            if (_segments.Exists(e => e.CurrentTry >= _maxTries))
+            if (_segments.Exists(e => e.CurrentTry >= _configurationSetting.NumberOfTrial))
             {
                 //will always exist thus the first(we checked the existence) 
-                var segment = _segments.First(e => e.CurrentTry >= _maxTries);
+                var segment = _segments.First(e => e.CurrentTry >= _configurationSetting.NumberOfTrial);
                 SetState(DownloaderState.EndedWithError);
                 Serilog.Log.Fatal("Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " + segment.Index + "Current Try: " + segment.CurrentTry + " ---this segment reached the max trials and the download will be ended");
                 return false;
             }
+
+            if (_segments.Exists(e => e.State >= SegmentState.Error)) hasErrors = true;
             foreach (var segment in _segments)
             {
-                if (segment.State == SegmentState.Error && segment.LastErrorDateTime != DateTime.MinValue && (_maxTries == 0 || segment.CurrentTry < _maxTries) && !tokenSource.IsCancellationRequested)
+                if (segment.State == SegmentState.Error /*&& segment.LastErrorDateTime != DateTime.MinValue*/ && (_configurationSetting.NumberOfTrial == 0 || segment.CurrentTry < _configurationSetting.NumberOfTrial) && !tokenSource.IsCancellationRequested)
                 {
                     
                     hasErrors = true;
                     TimeSpan ts = DateTime.Now - segment.LastErrorDateTime;
 
-                    if (ts.TotalSeconds >= _retryDelay )
+                    if (ts.TotalSeconds >= _configurationSetting.RetrialDelay)
                     {
                         
                         Serilog.Log.Information("Task #" + Task.CurrentId + " File : " + segment.CurrentURL + " Current segment " + segment.Index + "Current Try: " + segment.CurrentTry + " ---segment started again");
@@ -209,110 +213,13 @@ namespace AgodaFileDownloader.Logic
                     }
                     else
                     {
-                        delay = Math.Max(delay, _retryDelay * 1000 - ts.TotalMilliseconds);
+                        delay = Math.Max(delay, _configurationSetting.RetrialDelay * 1000 - ts.TotalMilliseconds);
                     }
                 }
             }
             Task.WaitAll(_tasks.ToArray());
             Thread.Sleep((int)delay);
             return hasErrors;
-        }
-        private ResponseBase AllocLocalFile()
-        {
-            try
-            {
-                Uri uri = new Uri(_detail.Url);
-                string filename = Path.GetFileName(uri.LocalPath);
-                _localFile = _path + "/" + filename;
-                FileInfo fileInfo = new FileInfo(_localFile);
-                if (!Directory.Exists(fileInfo.DirectoryName))
-                {
-                    if (fileInfo.DirectoryName != null) Directory.CreateDirectory(fileInfo.DirectoryName);
-                }
-
-                if (fileInfo.Exists)
-                {
-                    // auto rename the file...
-                    int count = 1;
-
-                    string fileExitWithoutExt = Path.GetFileNameWithoutExtension(_localFile);
-                    string ext = Path.GetExtension(_localFile);
-
-                    string newFileName;
-
-                    do
-                    {
-                        newFileName = PathHelper.GetWithBackslash(fileInfo.DirectoryName) + fileExitWithoutExt + $"_{count++}" + ext;
-                    } while (File.Exists(newFileName));
-
-                    _localFile = newFileName;
-                }
-
-                using (FileStream fs = new FileStream(_localFile, FileMode.Create, FileAccess.Write))
-                {
-                    fs.SetLength(0);
-                }
-                return new ResponseBase() { Denied = false };
-            }
-            catch (Exception ex)
-            {
-                while (ex.InnerException != null) ex = ex.InnerException;
-                Serilog.Log.Error(ex, "List of URLs requiring authentication passed down");
-                return new ResponseBase() { Denied = true };
-            }
-
-        }
-        private ResponseBase InitConfigData()
-        {
-            SetState(DownloaderState.Preparing);
-            var conversion = int.TryParse(ConfigurationManager.AppSettings["NumberOfTrial"], out _maxTries);
-            if (!conversion)
-            {
-                Serilog.Log.Error("Task #" + Task.CurrentId + "Could not Fetch max trial from config");
-                var response = new ResponseBase()
-                {
-                    Denied = true,
-
-                };
-                response.Messages.Add("Could not Fetch max trial for this URL " + _detail.Url);
-            }
-
-            conversion = int.TryParse(ConfigurationManager.AppSettings["RetrialDelay"], out _retryDelay);
-            if (!conversion)
-            {
-                Serilog.Log.Error("Task #" + Task.CurrentId + "Could not Fetch RetrialDelay from config ");
-                var response = new ResponseBase()
-                {
-                    Denied = true,
-
-                };
-                response.Messages.Add("Could not Fetch max trial for this URL " + _detail.Url);
-            }
-
-            conversion = int.TryParse(ConfigurationManager.AppSettings["NumberOfSegments"], out _numberOfSegments);
-            if (!conversion)
-            {
-                Serilog.Log.Error("Task #" + Task.CurrentId + "Could not Fetch number of segments from config");
-                var response = new ResponseBase()
-                {
-                    Denied = true,
-
-                };
-                response.Messages.Add("Could not Fetch max trial ");
-            }
-
-            _path = ConfigurationManager.AppSettings["LocalFilePath"];
-            if (string.IsNullOrEmpty(_path))
-            {
-                Serilog.Log.Error("Task #" + Task.CurrentId + "Could not Fetch path from config");
-                var response = new ResponseBase()
-                {
-                    Denied = true,
-
-                };
-                response.Messages.Add("Could not Fetch max trial ");
-            }
-            return new ResponseBase() { Denied = false };
         }
         private void SetState(DownloaderState value)
         {

@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace AgodaFileDownloader.Logic
+namespace AgodaFileDownloader.Logic.Helper
 {
     public static class PathHelper
     {
