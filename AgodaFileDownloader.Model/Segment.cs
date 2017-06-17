@@ -10,7 +10,6 @@ namespace AgodaFileDownloader.Model
         private SegmentState state;
         private bool started = false;
         private DateTime lastReception = DateTime.MinValue;
-        private DateTime lastErrorDateTime = DateTime.MinValue;
         private double rate;
         private long start;
         private TimeSpan left = TimeSpan.Zero;
@@ -43,7 +42,7 @@ namespace AgodaFileDownloader.Model
             }
         }
 
-        public DateTime LastErrorDateTime => lastErrorDateTime;
+        public DateTime LastErrorDateTime { get; set; } = DateTime.MinValue;
 
         public string LastError
         {
@@ -53,7 +52,7 @@ namespace AgodaFileDownloader.Model
             }
             set
             {
-                lastErrorDateTime = value != null ? DateTime.Now : DateTime.MinValue;
+                LastErrorDateTime = value != null ? DateTime.Now : DateTime.MinValue;
                 lastError = value;
             }
         }
