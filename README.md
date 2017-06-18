@@ -30,3 +30,7 @@ Nunit for unit tests https://www.nunit.org/
 
 Moq for the mock https://github.com/Moq/moq4/wiki/Quickstart
 
+ps: when you use the project please restore the nuget packages 
+
+
+
