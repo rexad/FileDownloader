@@ -51,8 +51,14 @@ namespace AgodaFileDownloader.Logic
             List<Task> tasks = new List<Task>();
             foreach (var resourceDetail in _resourceDetails)
             {
+                if (resourceDetail.ProtocolType == null)
+                {
+                    Log.Fatal("protocol not supported for url" + resourceDetail.Url);
+                    continue;
+                }
                 //Resolve the Download provider
-                _protocolDownloader=ProtocolProviderFactory.ResolveProvider(resourceDetail.ProtocolType);
+                _protocolDownloader =ProtocolProviderFactory.ResolveProvider(resourceDetail.ProtocolType);
+                
                 var fileDownloader = new FileDownloader(_segmentProcessor,_protocolDownloader, _initializeDonwload);
                 tasks.Add(fileDownloader.StartAsynch(resourceDetail, _configurationSetting));
             }
