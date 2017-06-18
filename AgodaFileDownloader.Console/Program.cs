@@ -21,6 +21,8 @@ namespace AgodaFileDownloader.Console
             var path = ConfigurationManager.AppSettings["LogFilePath"];
             if (string.IsNullOrEmpty(path))
             {
+                System.Console.WriteLine("could not load the log file path from app.config" +
+                                        " did you build the console project");
                 return;
             }
             //init the logging system
