@@ -6,7 +6,7 @@ FileDownloader.cs contains the workflow/different steps to download files .
 
 The files are downloaded simultaneously each file is divided into segments and they are downloaded simultaneously too.
 
-You can configure the different parameter from the app.config 0
+You can configure the different parameter from the app.config 
 
 The solution proposed for the different constraints :
 
@@ -30,7 +30,8 @@ Nunit for unit tests https://www.nunit.org/
 
 Moq for the mock https://github.com/Moq/moq4/wiki/Quickstart
 
-ps: when you use the project please restore the nuget packages first
+ps: when you use the project please restore the nuget packages first.
+
 app.config parameters :
 
     LocalFilePath:   where the files will be downloaded
