@@ -18,7 +18,7 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
             try
             {
                 HttpWebRequest request = (HttpWebRequest) GetRequest(rl);
-                request.Timeout = 100000;
+                //request.Timeout = 100000;
 
                 if (initialPosition != 0)
                 {

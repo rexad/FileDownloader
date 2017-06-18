@@ -42,7 +42,7 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
                 FillCredentials(request, rl);
 
                 request.UsePassive = true;
-                request.Timeout = -1;
+                //request.Timeout = -1;
                 request.Method = WebRequestMethods.Ftp.DownloadFile;
                 request.ContentOffset = initialPosition;
 
