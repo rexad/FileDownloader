@@ -16,7 +16,7 @@ Some sources might be very big (more than memory): A buffer is used we write sma
 
 Some sources might be very slow, while others might be fast: The program uses multi threading each file downloader runs in it's own thread, in addition each file is subdivided into segments (configurable in the app.config) and they runs in their own thread (speed up download) and extensible to mirrors.
 
-Some sources might fail in the middle of download :A retrial system exist (the number of retry and the delay between retrial can be configured in the app.config)
+Some sources might fail in the middle of download :A retrial system exist (the number of retry and the delay between retrials can be configured in the app.config)
 
 We don't want to have partial data in the final location in any case: If a segment fails to download it cancel all other segments and delete the file .
 
