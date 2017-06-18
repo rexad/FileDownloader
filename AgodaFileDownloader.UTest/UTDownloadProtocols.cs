@@ -8,11 +8,6 @@ namespace AgodaFileDownloader.UTest
     [TestFixture]
     public class UTDownloadProtocols
     {
-
-
-        
-
-
         private HttpProtocolDownloader _httpProtocolDownlaoder;
         private FtpProtocolDownloader _ftpProtocolDownlaoder;
         private ResourceDetail _resourceDetailFtp;

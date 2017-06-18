@@ -120,34 +120,7 @@ namespace AgodaFileDownloader.UTest
             
         }
 
-        [Test]
-        public void IsSupportingMultipleProtocols()
-        {
-            
-            ProtocolProviderFactory.RegisterProtocolHandler("http", typeof(HttpProtocolDownloader));
-            ProtocolProviderFactory.RegisterProtocolHandler("ftp", typeof(FtpProtocolDownloader));
-
-            container.RegisterType<ISegmentProcessor, SegmentProcessor>();
-            container.RegisterType<IInitializeDonwload, InitializeDownload>();
-
-
-            var downloadManger= container.Resolve<DownloadManager>();
-            downloadManger.Init(
-                new List<string>()
-                {
-                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20258%20-%20%CE%A4%CE%B1%CE%BE%CE%AF%CE%B4%CE%B9%20%CE%9C%CE%B5%20%CE%A4%CE%BF%CE%BD%20%CE%9A%CE%BF%CE%BB%CF%8C%CE%BC%CE%B2%CE%BF.pdf",
-                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20272%20-%20%CE%A3%CF%84%CE%B7%CE%BD%20%CE%9C%CE%AD%CF%83%CE%B7%20%CE%A4%CE%BF%CF%85%20%CE%A0%CE%BF%CF%85%CE%B8%CE%B5%CE%BD%CE%AC.pdf",
-                    "http://clicnet.swarthmore.edu/boudjedra.pdf",
-                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20044%20-%20%CE%A0%CE%B1%CE%B3%CF%89%CE%BC%CE%AD%CE%BD%CE%BF%20%CF%87%CF%81%CF%85%CF%83%CE%AC%CF%86%CE%B9.pdf",
-                    "http://www.gideonphoto.com/blog/wp-content/uploads/2012/12/IMG_8940_2.jpg",
-                    "ftp://150.140.208.250/share/ebooks/COMICS%20-%20The%20Ultimate%20Collection/%CE%A4%CE%B5%CF%8D%CF%87%CE%BF%CF%82%20252%20-%20%CE%97%20%CE%A7%CE%B1%CE%BC%CE%AD%CE%BD%CE%B7%20%CE%9C%CE%BF%CF%8D%CE%BC%CE%B9%CE%B1.pdf",
-
-                     },
-                new List<AuthenticatedUrl>());
-            var tasks=downloadManger.Download();
-            Task.WaitAll(tasks.ToArray());
-            //todo test for allthe file exiestence
-        }
+      
         
         [Test]
         public void IsSupportingMultiThreadingForMultipleFiles()
@@ -173,8 +146,6 @@ namespace AgodaFileDownloader.UTest
             Assert.AreEqual(tasks.Count,3);
             Assert.IsTrue(tasks.TrueForAll(e=>e.Status==TaskStatus.Running));
         }
-        
-      
         
         [Test]
         public void IsDeletingIfIncomplete()
@@ -217,9 +188,7 @@ namespace AgodaFileDownloader.UTest
             _mockSegementProcessorDownloadSegmentRetries.Verify(m => m.DeleteFile(It.IsAny<string>()));
 
         }
-
-
-
+        
         [Test]
         public void IsDownloadFailsAfterMaxRetries()
         {
