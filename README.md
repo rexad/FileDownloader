@@ -21,8 +21,12 @@ Some sources might fail in the middle of download :A retrial system exist (the n
 We don't want to have partial data in the final location in any case: If a segment fails to download it cancel all other segments and delete the file .
 
 3 rd parties libraries used :
+
 Unity as a DI Injection  https://github.com/unitycontainer/unity
+
 Serilog for logs https://serilog.net/
+
 Nunit for unit tests https://www.nunit.org/
+
 Moq for the mock https://github.com/Moq/moq4/wiki/Quickstart
 
