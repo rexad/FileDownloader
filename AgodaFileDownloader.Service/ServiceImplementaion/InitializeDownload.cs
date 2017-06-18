@@ -30,6 +30,16 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
                 };
                 response.Messages.Add("Could not Fetch max trial from config");
             }
+            if (maxTries < 0)
+            {
+                Serilog.Log.Error("Max tries below 0");
+                var response = new ResponseBase()
+                {
+                    Denied = true,
+
+                };
+                response.Messages.Add("Max tries below 0");
+            }
 
             conversion = int.TryParse(ConfigurationManager.AppSettings["RetrialDelay"], out retryDelay);
             if (!conversion)
@@ -41,6 +51,17 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
 
                 };
                 response.Messages.Add("Could not Fetch RetrialDelay from config ");
+            }
+
+            if (retryDelay < 0)
+            {
+                Serilog.Log.Error("retryDelay below 0");
+                var response = new ResponseBase()
+                {
+                    Denied = true,
+
+                };
+                response.Messages.Add("retryDelay below 0");
             }
 
             conversion = int.TryParse(ConfigurationManager.AppSettings["NumberOfSegments"], out numberOfSegments);
@@ -55,6 +76,16 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
                 response.Messages.Add("Could not Fetch number of segments from config");
             }
 
+            if (numberOfSegments < 1)
+            {
+                Serilog.Log.Error("number Of Segments below 1");
+                var response = new ResponseBase()
+                {
+                    Denied = true,
+
+                };
+                response.Messages.Add("number Of Segments below 1");
+            }
 
             conversion = int.TryParse(ConfigurationManager.AppSettings["Timeout"], out timeout);
             if (!conversion)
@@ -68,6 +99,16 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
                 response.Messages.Add("Could not Fetch timeout from config");
             }
 
+            if (timeout < 0)
+            {
+                Serilog.Log.Error("timeout below 0");
+                var response = new ResponseBase()
+                {
+                    Denied = true,
+
+                };
+                response.Messages.Add("timeout below 0");
+            }
 
             conversion = long.TryParse(ConfigurationManager.AppSettings["MinSizeSegment"], out minSizeSegment);
             if (!conversion)
@@ -80,6 +121,18 @@ namespace AgodaFileDownloader.Service.ServiceImplementaion
                 };
                 response.Messages.Add("Could not Fetch max trial ");
             }
+
+            if (minSizeSegment < 1)
+            {
+                Serilog.Log.Error("minSizeSegment below 1");
+                var response = new ResponseBase()
+                {
+                    Denied = true,
+
+                };
+                response.Messages.Add("minSizeSegment below 1");
+            }
+
 
             path = ConfigurationManager.AppSettings["LocalFilePath"];
             if (string.IsNullOrEmpty(path))
