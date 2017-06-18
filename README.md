@@ -31,6 +31,20 @@ Nunit for unit tests https://www.nunit.org/
 Moq for the mock https://github.com/Moq/moq4/wiki/Quickstart
 
 ps: when you use the project please restore the nuget packages first
+app.config parameters :
 
+    LocalFilePath:   where the files will be downloaded
+    
+    NumberOfTrial:   number of retrial in cse of an error
+    
+    RetrialDelay:     delay between retrials
+    
+    NumberOfSegments: how much segments we can subdivise a single file
+    
+    MinSizeSegment:   minimalsize of a sefment
+    
+    Timeout:          timeout before ending the connection 
+    
+    LogFilePath:      where tostore the logfile
 
 
