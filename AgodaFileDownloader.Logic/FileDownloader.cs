@@ -218,6 +218,9 @@ namespace AgodaFileDownloader.Logic
                 }
             }
             Task.WaitAll(_tasks.ToArray());
+
+            if(delay>0)
+            Serilog.Log.Information("----- goes to sleep for :+"+ delay/ 1000 +" seconds to respect the delay ");
             Thread.Sleep((int)delay);
             return hasErrors;
         }
